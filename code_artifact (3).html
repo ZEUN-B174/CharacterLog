@@ -1,0 +1,2033 @@
+<!DOCTYPE html>
+<html lang="ko" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>캐릭터로그 - 자작 캐릭터 위키</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            namu: {
+              DEFAULT: '#008275',
+              dark: '#00655b',
+              light: '#00a495',
+              soft: '#e9f7f5',
+              softDark: '#122c28',
+              border: '#d2d6dc',
+              darkBorder: '#374151'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    * {
+      font-family: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+    /* Namuwiki-style spoiler drag/hover reveal */
+    .wiki-spoiler {
+      background-color: #2b2d30;
+      color: #2b2d30;
+      padding: 0 4px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: color 0.15s ease;
+      user-select: text;
+    }
+    .wiki-spoiler:hover, .wiki-spoiler:active {
+      color: #ffffff;
+    }
+    /* Namuwiki-style Footnotes */
+    .wiki-fn-wrap {
+      position: relative;
+      display: inline-block;
+      vertical-align: super;
+      line-height: 0;
+    }
+    .wiki-fn-tooltip {
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.15s ease, visibility 0.15s ease;
+    }
+    .wiki-fn-wrap:hover .wiki-fn-tooltip {
+      visibility: visible;
+      opacity: 1;
+    }
+    /* Target jump pulse animation */
+    :target {
+      animation: highlightTarget 1.5s ease-out;
+    }
+    @keyframes highlightTarget {
+      0% { background-color: rgba(0, 130, 117, 0.25); }
+      100% { background-color: transparent; }
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 130, 117, 0.4);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 130, 117, 0.8);
+    }
+  </style>
+</head>
+<body class="h-full bg-[#f6f7f9] dark:bg-[#191a1c] text-gray-800 dark:text-gray-200 transition-colors duration-200 flex flex-col">
+
+  <!-- Top Navigation Bar (Namuwiki Header Style) -->
+  <header class="bg-[#008275] text-white sticky top-0 z-40 shadow-md">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-2">
+      <!-- Logo & Main Menu -->
+      <div class="flex items-center gap-3 shrink-0">
+        <button id="mobileMenuBtn" class="sm:hidden p-1.5 hover:bg-white/10 rounded" title="캐릭터 목록 열기">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <a href="#" id="brandLogo" class="flex items-center gap-2 font-bold text-lg sm:text-xl tracking-tight hover:opacity-90">
+          <span class="bg-white text-[#008275] rounded px-1.5 py-0.5 text-xs font-black">OC</span>
+          <span>캐릭터로그</span>
+        </a>
+      </div>
+
+      <!-- Live Wiki Search Box -->
+      <div class="relative flex-1 max-w-md mx-2">
+        <div class="relative">
+          <input type="text" id="wikiSearchInput" placeholder="캐릭터 이름, 소속, 태그 검색..." 
+            class="w-full pl-9 pr-8 py-1.5 rounded bg-white text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#00a495] shadow-inner">
+          <svg class="w-4 h-4 text-gray-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <button id="clearSearchBtn" class="hidden absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+          </button>
+        </div>
+        <!-- Search Auto-complete Dropdown -->
+        <div id="searchResultsDropdown" class="hidden absolute left-0 right-0 mt-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-md shadow-xl border border-gray-200 dark:border-gray-700 max-h-80 overflow-y-auto z-50 text-sm">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-1 sm:gap-2">
+        <button id="btnRandom" class="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded hover:bg-white/10 transition" title="랜덤 캐릭터 문서로 이동">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <span class="hidden md:inline">랜덤 문서</span>
+        </button>
+        <button id="btnNewOC" class="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 transition text-white shadow-sm" title="새 자작 캐릭터 추가">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          <span class="hidden sm:inline">새 문서 작성</span>
+        </button>
+        <!-- Dark Mode Toggle -->
+        <button id="themeToggleBtn" class="p-2 rounded hover:bg-white/10 transition" title="테마 전환">
+          <svg id="sunIcon" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/></svg>
+          <svg id="moonIcon" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Wrapper -->
+  <div class="flex-1 max-w-7xl w-full mx-auto flex flex-col md:flex-row gap-4 p-3 sm:p-5">
+
+    <!-- Left Sidebar: Character List & Quick Navigation -->
+    <aside id="wikiSidebar" class="hidden md:flex flex-col w-64 shrink-0 bg-white dark:bg-[#202225] border border-gray-200 dark:border-gray-800 rounded-lg p-3.5 shadow-sm h-fit sticky top-20">
+      <div class="flex items-center justify-between pb-2.5 border-b border-gray-200 dark:border-gray-700">
+        <h2 class="text-xs font-bold text-gray-500 dark:text-gray-400 tracking-wider uppercase flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-[#008275]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          보유 자작 캐릭터 (<span id="characterCount">0</span>)
+        </h2>
+        <button id="btnBackupData" class="text-xs text-[#008275] hover:underline flex items-center gap-0.5" title="데이터 관리(내보내기/불러오기)">
+          관리
+        </button>
+      </div>
+
+      <!-- Quick Search in Sidebar -->
+      <div class="my-2.5">
+        <input type="text" id="sidebarFilterInput" placeholder="목록 내 필터..." 
+          class="w-full text-xs px-2.5 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:border-[#008275]">
+      </div>
+
+      <!-- Character List Items -->
+      <ul id="characterListUl" class="space-y-1 overflow-y-auto max-h-[calc(100vh-280px)] pr-1 text-sm">
+        <!-- Injected via JavaScript -->
+      </ul>
+
+      <!-- Bottom Tools in Sidebar -->
+      <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 space-y-2">
+        <div class="flex items-center justify-between">
+          <span>위키 엔진 버전</span>
+          <span class="font-mono font-medium">v2.5.0-OC</span>
+        </div>
+        <button id="btnResetSampleData" class="w-full py-1 text-center text-xs text-gray-400 hover:text-red-500 hover:underline">
+          샘플 캐릭터 복원하기
+        </button>
+      </div>
+    </aside>
+
+    <!-- Center / Right: Main Wiki Article Content Area -->
+    <main class="flex-1 min-w-0 bg-white dark:bg-[#202225] border border-gray-200 dark:border-gray-800 rounded-lg p-4 sm:p-8 shadow-sm">
+      
+      <!-- VIEW 1: Wiki Main / Front Page (대문) -->
+      <div id="homeView" class="hidden space-y-6">
+        <!-- Welcome Hero Banner -->
+        <div class="relative overflow-hidden rounded-lg bg-gradient-to-r from-[#008275] via-[#009688] to-[#00655b] p-6 text-white shadow-sm">
+          <div class="relative z-10 max-w-2xl">
+            <span class="inline-block bg-white/20 text-white text-[11px] font-bold px-2 py-0.5 rounded mb-2">대문: 메인 페이지</span>
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">자작 캐릭터 데이터베이스, 캐릭터로그</h1>
+            <p class="text-xs sm:text-sm text-emerald-100 mt-2 leading-relaxed">
+              여러분의 오리지널 캐릭터(OC)와 방대한 세계관, 프로필, 능력치, 대인관계를 나무위키 스타일로 자유롭게 기록하고 보존하세요.
+            </p>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <button id="btnHomeNewOC" class="px-3.5 py-1.5 bg-white text-[#008275] hover:bg-emerald-50 rounded text-xs font-bold transition shadow-sm flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                새 캐릭터 문서 작성
+              </button>
+              <button id="btnHomeRandom" class="px-3 py-1.5 bg-black/20 hover:bg-black/30 text-white rounded text-xs font-semibold transition flex items-center gap-1">
+                🎲 아무 문서나 둘러보기
+              </button>
+            </div>
+          </div>
+          <div class="absolute right-3 -bottom-6 opacity-10 text-white select-none pointer-events-none text-9xl font-black">
+            OC
+          </div>
+        </div>
+
+        <!-- Quick Wiki Statistics -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+          <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-lg border border-gray-200 dark:border-gray-700">
+            <span class="text-xs text-gray-500">등록된 캐릭터</span>
+            <div id="statTotalChars" class="text-xl sm:text-2xl font-black text-[#008275] dark:text-emerald-400 mt-0.5">0</div>
+          </div>
+          <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-lg border border-gray-200 dark:border-gray-700">
+            <span class="text-xs text-gray-500">고유 능력 및 스킬</span>
+            <div id="statTotalSkills" class="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 mt-0.5">0</div>
+          </div>
+          <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-lg border border-gray-200 dark:border-gray-700">
+            <span class="text-xs text-gray-500">세계관 & 분류 태그</span>
+            <div id="statTotalCategories" class="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400 mt-0.5">0</div>
+          </div>
+          <div class="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-lg border border-gray-200 dark:border-gray-700">
+            <span class="text-xs text-gray-500">최근 업데이트</span>
+            <div id="statRecentTime" class="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mt-1 truncate">-</div>
+          </div>
+        </div>
+
+        <!-- Featured Character (오늘의 주목할 캐릭터) -->
+        <div>
+          <div class="flex items-center justify-between border-b-2 border-[#008275] pb-1.5 mb-3">
+            <h2 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+              <span class="text-[#008275]">⭐</span> 오늘의 주목할 캐릭터
+            </h2>
+            <button id="btnRefreshFeatured" class="text-xs text-gray-400 hover:text-[#008275] flex items-center gap-1">
+              새로고침
+            </button>
+          </div>
+          <div id="featuredCharCard" class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-[#25282c] flex flex-col sm:flex-row hover:shadow-md transition">
+            <!-- Dynamically injected -->
+          </div>
+        </div>
+
+        <!-- Two Columns: Character Gallery & Recent Changes Table -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Character Gallery / Grid (2 Cols) -->
+          <div class="lg:col-span-2 space-y-3">
+            <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-1.5">
+              <h2 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                <span class="text-[#008275]">📁</span> 캐릭터 전체 둘러보기
+              </h2>
+              <span id="galleryCount" class="text-xs text-gray-400">전체</span>
+            </div>
+            <!-- Category Filter Pills -->
+            <div id="homeCategoryPills" class="flex flex-wrap gap-1.5 pb-1">
+              <!-- Dynamically populated -->
+            </div>
+            <!-- Cards Grid -->
+            <div id="homeCharacterCardsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Namuwiki Style Recent Changes (최근 변경 내역) -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-1.5">
+              <h2 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                <span class="text-[#008275]">🕒</span> 최근 변경된 문서
+              </h2>
+            </div>
+            <div class="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden bg-white dark:bg-[#25282c]">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-semibold">
+                  <tr>
+                    <th class="p-2">문서명</th>
+                    <th class="p-2 text-right">수정 시각</th>
+                  </tr>
+                </thead>
+                <tbody id="homeRecentChangesTbody" class="divide-y divide-gray-100 dark:divide-gray-700/60">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- VIEW 2: Character Article Content Area (문서 상세) -->
+      <div id="articleView">
+
+      <!-- Breadcrumb & Category Badge Box -->
+      <div class="flex flex-wrap items-center justify-between gap-2 text-xs pb-3 border-b border-gray-200 dark:border-gray-800">
+        <!-- Breadcrumb Navigation -->
+        <div class="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 font-medium">
+          <button id="btnBreadcrumbHome" class="hover:text-[#008275] flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            대문
+          </button>
+          <span>&gt;</span>
+          <span id="breadcrumbCategory" class="text-gray-600 dark:text-gray-300">자작 캐릭터</span>
+          <span>&gt;</span>
+          <span id="breadcrumbCurrentName" class="text-gray-900 dark:text-white font-bold truncate max-w-[120px]">캐릭터</span>
+        </div>
+
+        <div class="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300">
+          <span class="font-bold text-[#008275]">분류:</span>
+          <div id="categoryBadgeContainer" class="flex flex-wrap gap-1">
+            <!-- Dynamic category tags -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Article Header & Tools -->
+      <div class="pt-4 pb-4 border-b border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <div class="text-xs text-gray-400 dark:text-gray-500 mb-1 flex items-center gap-2">
+            <span>최근 수정 시각: <span id="articleLastModified">-</span></span>
+            <span class="inline-block w-1 h-1 rounded-full bg-emerald-500"></span>
+            <span class="text-emerald-700 dark:text-emerald-400 font-medium">기여 가능</span>
+          </div>
+          <h1 id="articleTitle" class="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+            <!-- Character Name -->
+          </h1>
+          <p id="articleSubTitle" class="text-sm text-gray-500 dark:text-gray-400 italic mt-0.5">
+            <!-- English / Alternate Name -->
+          </p>
+        </div>
+
+        <!-- Namuwiki Article Header Buttons -->
+        <div class="flex items-center gap-1 bg-gray-100 dark:bg-[#2b2d30] p-1 rounded-md border border-gray-200 dark:border-gray-700 self-start sm:self-auto text-xs font-semibold">
+          <button id="btnTabRead" class="px-2.5 py-1 rounded bg-white dark:bg-gray-700 shadow-xs text-[#008275] dark:text-emerald-400 font-bold">문서</button>
+          <button id="btnEditArticle" class="px-2.5 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition flex items-center gap-1 text-gray-700 dark:text-gray-200">
+            <svg class="w-3.5 h-3.5 text-[#008275]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            편집
+          </button>
+          <button id="btnShareArticle" class="px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition text-gray-700 dark:text-gray-200" title="링크 및 요약 복사">
+            공유
+          </button>
+          <button id="btnDeleteArticle" class="px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 transition" title="문서 삭제">
+            삭제
+          </button>
+        </div>
+      </div>
+
+      <!-- Quote Callout Box -->
+      <div id="articleQuoteBox" class="my-4 border-l-4 border-[#008275] bg-[#eef8f6] dark:bg-[#122824] p-3.5 rounded-r text-sm italic text-gray-700 dark:text-gray-300 relative">
+        <span class="text-2xl text-[#008275] absolute top-1 left-2 font-serif opacity-40">“</span>
+        <p id="articleQuoteText" class="pl-4 font-serif"></p>
+      </div>
+
+      <!-- Main Content Layout (Table of Contents + Right Floating Infobox) -->
+      <div class="mt-4 flex flex-col lg:flex-row gap-6 items-start">
+        
+        <!-- Document Body (Left) -->
+        <div class="flex-1 w-full order-2 lg:order-1 min-w-0">
+          
+          <!-- Namuwiki Style Table of Contents (목차) -->
+          <div class="bg-gray-50 dark:bg-[#282a2e] border border-gray-200 dark:border-gray-700 rounded-md p-3.5 mb-6 max-w-sm shadow-xs">
+            <div class="flex items-center justify-between font-bold text-sm border-b border-gray-200 dark:border-gray-700 pb-2 mb-2 text-gray-900 dark:text-white">
+              <span class="flex items-center gap-1.5 text-xs font-bold text-gray-800 dark:text-gray-200">
+                <svg class="w-4 h-4 text-[#008275]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+                목차
+              </span>
+              <button id="btnToggleToc" class="text-xs text-[#008275] hover:underline font-normal cursor-pointer">[접기]</button>
+            </div>
+            <nav id="tocNav">
+              <ul id="tocList" class="text-xs space-y-1 text-gray-700 dark:text-gray-300">
+                <!-- Dynamically rendered TOC links -->
+              </ul>
+            </nav>
+          </div>
+
+          <!-- Section 1: 개요 (Overview) -->
+          <section id="sec-overview" class="mb-8 scroll-mt-20">
+            <div class="flex items-center justify-between border-b-2 border-[#008275] pb-1 mb-3">
+              <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <span class="text-[#008275]">1.</span> 개요
+              </h2>
+              <button class="text-xs text-gray-400 hover:text-[#008275] btn-quick-edit" data-section="overview">[편집]</button>
+            </div>
+            <div id="contentOverview" class="prose dark:prose-invert max-w-none text-sm leading-relaxed text-gray-700 dark:text-gray-300 space-y-2 whitespace-pre-line">
+              <!-- Injected -->
+            </div>
+          </section>
+
+          <!-- Section 2: 상세 정보 / 외모 및 성격 -->
+          <section id="sec-details" class="mb-8 scroll-mt-20">
+            <div class="flex items-center justify-between border-b-2 border-[#008275] pb-1 mb-3">
+              <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <span class="text-[#008275]">2.</span> 상세 정보
+              </h2>
+              <button class="text-xs text-gray-400 hover:text-[#008275] btn-quick-edit" data-section="details">[편집]</button>
+            </div>
+            
+            <h3 id="sec-appearance" class="text-base font-bold text-gray-800 dark:text-gray-200 mt-4 mb-2 flex items-center gap-1.5 scroll-mt-20">
+              <span class="text-[#00a495]">2.1.</span> 외모 및 인상
+            </h3>
+            <div id="contentAppearance" class="text-sm leading-relaxed text-gray-700 dark:text-gray-300 mb-4 whitespace-pre-line"></div>
+
+            <h3 id="sec-personality" class="text-base font-bold text-gray-800 dark:text-gray-200 mt-4 mb-2 flex items-center gap-1.5 scroll-mt-20">
+              <span class="text-[#00a495]">2.2.</span> 성격 및 특징
+            </h3>
+            <div id="contentPersonality" class="text-sm leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-line"></div>
+          </section>
+
+          <!-- Section 3: 작중 행적 및 과거사 -->
+          <section id="sec-story" class="mb-8 scroll-mt-20">
+            <div class="flex items-center justify-between border-b-2 border-[#008275] pb-1 mb-3">
+              <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <span class="text-[#008275]">3.</span> 작중 행적 및 과거사
+              </h2>
+              <button class="text-xs text-gray-400 hover:text-[#008275] btn-quick-edit" data-section="story">[편집]</button>
+            </div>
+            <div id="contentStory" class="text-sm leading-relaxed text-gray-700 dark:text-gray-300 space-y-2 whitespace-pre-line">
+              <!-- Injected -->
+            </div>
+          </section>
+
+          <!-- Section 4: 능력 및 기술 (Abilities) -->
+          <section id="sec-skills" class="mb-8 scroll-mt-20">
+            <div class="flex items-center justify-between border-b-2 border-[#008275] pb-1 mb-3">
+              <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <span class="text-[#008275]">4.</span> 능력 및 스킬
+              </h2>
+              <button class="text-xs text-gray-400 hover:text-[#008275] btn-quick-edit" data-section="skills">[편집]</button>
+            </div>
+            <div id="contentSkillsContainer" class="space-y-3">
+              <!-- Skill Cards / Table -->
+            </div>
+          </section>
+
+          <!-- Section 5: 대인 관계 (Relationships) -->
+          <section id="sec-relations" class="mb-8 scroll-mt-20">
+            <div class="flex items-center justify-between border-b-2 border-[#008275] pb-1 mb-3">
+              <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <span class="text-[#008275]">5.</span> 대인 관계
+              </h2>
+              <button class="text-xs text-gray-400 hover:text-[#008275] btn-quick-edit" data-section="relations">[편집]</button>
+            </div>
+            <div id="contentRelationsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <!-- Relation boxes -->
+            </div>
+          </section>
+
+          <!-- Section 6: 어록 및 명대사 (Quotes) -->
+          <section id="sec-quotes" class="mb-8 scroll-mt-20">
+            <div class="flex items-center justify-between border-b-2 border-[#008275] pb-1 mb-3">
+              <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <span class="text-[#008275]">6.</span> 명대사
+              </h2>
+              <button class="text-xs text-gray-400 hover:text-[#008275] btn-quick-edit" data-section="quotes">[편집]</button>
+            </div>
+            <ul id="contentQuotesList" class="space-y-2 text-sm">
+              <!-- Injected -->
+            </ul>
+          </section>
+
+          <!-- Section 7: 여담 및 트리비아 (Trivia) -->
+          <section id="sec-trivia" class="mb-8 scroll-mt-20">
+            <div class="flex items-center justify-between border-b-2 border-[#008275] pb-1 mb-3">
+              <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <span class="text-[#008275]">7.</span> 여담
+              </h2>
+              <button class="text-xs text-gray-400 hover:text-[#008275] btn-quick-edit" data-section="trivia">[편집]</button>
+            </div>
+            <ul id="contentTriviaList" class="list-disc list-inside space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
+              <!-- Trivia items -->
+            </ul>
+          </section>
+
+          <!-- Section 8: 각주 (Footnotes) -->
+          <section id="sec-footnotes" class="mt-10 pt-4 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500">
+            <h4 class="font-bold text-gray-700 dark:text-gray-300 mb-2">[각주]</h4>
+            <ol id="footnotesList" class="list-decimal list-inside space-y-1">
+              <!-- Footnotes items -->
+            </ol>
+          </section>
+
+        </div>
+
+        <!-- Namuwiki Profile Infobox (Right Column / Top on mobile) -->
+        <div class="w-full lg:w-80 shrink-0 order-1 lg:order-2">
+          <div id="infoBoxCard" class="border-2 border-[#008275] rounded bg-white dark:bg-[#25282c] shadow-sm overflow-hidden text-xs transition-colors duration-200">
+            
+            <!-- Infobox Title Banner -->
+            <div id="infoBoxBanner" class="bg-[#008275] text-white p-2.5 text-center font-bold text-base tracking-wide flex items-center justify-center gap-1.5 transition-colors duration-200">
+              <span id="infoBoxCharName">캐릭터 이름</span>
+            </div>
+
+            <!-- Infobox Image & Caption -->
+            <div id="infoBoxImageBox" class="bg-gray-100 dark:bg-[#1a1b1e] border-b border-[#008275] flex flex-col items-center justify-center p-2 relative group min-h-[220px] transition-colors duration-200">
+              <img id="infoBoxImage" src="" alt="캐릭터 일러스트" 
+                class="max-h-72 w-auto object-contain rounded transition duration-200"
+                onerror="this.onerror=null; this.src='https://placehold.co/400x500/008275/ffffff?text=No+Image';">
+              <div id="infoBoxImageCaption" class="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 text-center px-2">
+                공식 일러스트 / 기본 설정화
+              </div>
+            </div>
+
+            <!-- Infobox Key-Value Table -->
+            <table class="w-full text-left border-collapse">
+              <tbody id="infoBoxTableBody" class="divide-y divide-gray-200 dark:divide-gray-700">
+                <!-- Injected Rows (이명, 나이, 신체, 소속, 능력, 성우 등) -->
+              </tbody>
+            </table>
+
+            <!-- Infobox Theme Color Bar -->
+            <div id="infoBoxColorBar" class="h-1.5 w-full bg-[#008275]"></div>
+          </div>
+        </div>
+
+      </div>
+
+      </div> <!-- End of #articleView -->
+
+    </main>
+  </div>
+
+  <!-- Edit / Create Character Modal -->
+  <div id="editModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+    <div class="bg-white dark:bg-[#232528] rounded-lg shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-gray-300 dark:border-gray-700 animate-in fade-in duration-150">
+      
+      <!-- Modal Header -->
+      <div class="bg-[#008275] text-white px-5 py-3.5 flex items-center justify-between shrink-0">
+        <h3 id="modalTitle" class="font-bold text-base flex items-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          캐릭터 문서 편집
+        </h3>
+        <button id="btnCloseModal" class="text-white/80 hover:text-white text-xl leading-none">&times;</button>
+      </div>
+
+      <!-- Modal Body (Tabs + Fields) -->
+      <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 text-sm">
+        
+        <!-- Tab Buttons for Easy Editing -->
+        <div class="flex flex-wrap gap-1 border-b border-gray-200 dark:border-gray-700 pb-2 text-xs font-semibold">
+          <button type="button" class="tab-btn px-3 py-1.5 rounded bg-[#008275] text-white" data-tab="tab-basic">기본 정보 & 인포박스</button>
+          <button type="button" class="tab-btn px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200" data-tab="tab-story">상세 설정 & 스토리</button>
+          <button type="button" class="tab-btn px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200" data-tab="tab-skills">능력치 & 기술</button>
+          <button type="button" class="tab-btn px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200" data-tab="tab-relations">인간관계 & 명대사</button>
+          <button type="button" class="tab-btn px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200" data-tab="tab-trivia">여담 & 문법 안내</button>
+        </div>
+
+        <!-- Form Elements -->
+        <form id="ocEditorForm" class="space-y-4">
+          <input type="hidden" id="editCharId">
+
+          <!-- TAB 1: Basic Info -->
+          <div id="tab-basic" class="tab-pane space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">캐릭터 이름 *</label>
+                <input type="text" id="fName" required class="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white focus:ring-1 focus:ring-[#008275]">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">영문 / 한자 / 별칭 표기</label>
+                <input type="text" id="fSubName" placeholder="예: Lucian Valentine / ルシアン" class="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">분류 태그 (쉼표로 구분)</label>
+                <input type="text" id="fCategories" placeholder="예: 판타지, 성기사단, 주연, 흑발" class="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">상징 테마 색상 (HEX)</label>
+                <div class="flex items-center gap-2">
+                  <input type="color" id="fThemeColorPicker" value="#008275" class="h-9 w-12 rounded cursor-pointer border p-0.5">
+                  <input type="text" id="fThemeColor" value="#008275" class="flex-1 px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white font-mono text-xs">
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">대표 일러스트 이미지 URL</label>
+              <input type="url" id="fImageUrl" placeholder="https://..." class="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+              <p class="text-[11px] text-gray-400 mt-1">※ 웹에 공개된 이미지 링크를 넣으시면 인포박스에 나타납니다.</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">대표 한마디 (상단 인용구)</label>
+              <input type="text" id="fQuote" placeholder="예: 꺾이지 않는 신념만이 어둠을 가르는 유일한 검이다." class="w-full px-3 py-2 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white italic">
+            </div>
+
+            <!-- Custom Key-Value Infobox Fields -->
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-xs font-bold text-gray-700 dark:text-gray-300">인포박스 항목 (자유 항목)</label>
+                <button type="button" id="btnAddInfoRow" class="text-xs bg-[#eef8f6] text-[#008275] dark:bg-gray-800 dark:text-emerald-400 px-2 py-1 rounded hover:opacity-80 font-bold">+ 항목 추가</button>
+              </div>
+              <div id="infoboxRowsContainer" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                <!-- Dynamically generated rows -->
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 2: Story & Overview -->
+          <div id="tab-story" class="tab-pane hidden space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">1. 개요 (Overview)</label>
+              <textarea id="fOverview" rows="4" placeholder="캐릭터의 전체적인 소개를 적어주세요." class="w-full p-2.5 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">2.1. 외모 및 인상</label>
+              <textarea id="fAppearance" rows="3" placeholder="눈동자 색, 헤어스타일, 의복, 흉터 등" class="w-full p-2.5 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">2.2. 성격 및 특징</label>
+              <textarea id="fPersonality" rows="3" placeholder="말투, 성격적 결함, 좋아하는 음식, 버릇 등" class="w-full p-2.5 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">3. 작중 행적 및 과거사</label>
+              <textarea id="fStory" rows="5" placeholder="스포일러가 있다면 [spoiler]텍스트[/spoiler]로 감쌀 수 있습니다." class="w-full p-2.5 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white"></textarea>
+              <p class="text-[11px] text-gray-400 mt-1">※ [spoiler]내용[/spoiler]을 입력하면 나무위키처럼 마우스를 올려야 보이는 반투명 블러 스포일러가 적용됩니다.</p>
+            </div>
+          </div>
+
+          <!-- TAB 3: Skills -->
+          <div id="tab-skills" class="tab-pane hidden space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-gray-700 dark:text-gray-300">스킬 및 특수 능력 목록</span>
+              <button type="button" id="btnAddSkill" class="text-xs bg-[#008275] text-white px-2.5 py-1 rounded hover:bg-[#00655b] font-bold">+ 스킬 추가</button>
+            </div>
+            <div id="skillsEditorList" class="space-y-3 max-h-96 overflow-y-auto pr-1">
+              <!-- Dynamically populated skills -->
+            </div>
+          </div>
+
+          <!-- TAB 4: Relationships & Quotes -->
+          <div id="tab-relations" class="tab-pane hidden space-y-4">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-gray-700 dark:text-gray-300">인간관계 (타 캐릭터와의 관계)</span>
+                <button type="button" id="btnAddRelation" class="text-xs bg-[#008275] text-white px-2.5 py-1 rounded hover:bg-[#00655b] font-bold">+ 관계 추가</button>
+              </div>
+              <div id="relationsEditorList" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                <!-- Dynamically populated relations -->
+              </div>
+            </div>
+
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
+              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">명대사 목록 (줄 단위 구분)</label>
+              <textarea id="fQuotesText" rows="4" placeholder='"대사 1"&#10;"대사 2"' class="w-full p-2.5 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white"></textarea>
+            </div>
+          </div>
+
+          <!-- TAB 5: Trivia & Footnotes -->
+          <div id="tab-trivia" class="tab-pane hidden space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">여담 (한 줄에 하나씩 작성)</label>
+              <textarea id="fTriviaText" rows="6" placeholder="- 취미는 야간 산책이다.&#10;- 의외로 단 음식을 매우 싫어한다. (취소선은 ~~텍스트~~ 로 적용)" class="w-full p-2.5 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white"></textarea>
+            </div>
+            <!-- Helpful Syntax Tip Card (Pure Inline Footnotes Guide) -->
+            <div class="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-md text-xs space-y-1.5 text-gray-700 dark:text-gray-300">
+              <div class="font-bold text-[#008275] dark:text-emerald-400 flex items-center gap-1">
+                <span>💡</span> 나무위키 서식 작성 가이드
+              </div>
+              <ul class="space-y-1 text-[11px] leading-relaxed">
+                <li>• <strong>각주 작성:</strong> 개요, 외모, 스토리 등 본문 어디든 <code class="bg-white dark:bg-gray-800 px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-700 font-mono text-[#008275] dark:text-emerald-400">[* 각주 내용]</code>을 적으시면 본문에 호버 툴팁과 하단 각주 목록이 자동 생성됩니다.</li>
+                <li>• <strong>취소선:</strong> <code class="bg-white dark:bg-gray-800 px-1 py-0.5 rounded border border-gray-200 dark:border-gray-700 font-mono">~~취소선 드립~~</code></li>
+                <li>• <strong>스포일러 블러:</strong> <code class="bg-white dark:bg-gray-800 px-1 py-0.5 rounded border border-gray-200 dark:border-gray-700 font-mono">[spoiler]가려둘 내용[/spoiler]</code> (마우스 오버/터치 시 표시)</li>
+                <li>• <strong>굵게:</strong> <code class="bg-white dark:bg-gray-800 px-1 py-0.5 rounded border border-gray-200 dark:border-gray-700 font-mono">**강조 텍스트**</code></li>
+              </ul>
+            </div>
+          </div>
+
+        </form>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="bg-gray-100 dark:bg-gray-800 px-5 py-3 flex items-center justify-between shrink-0 border-t border-gray-200 dark:border-gray-700">
+        <span class="text-xs text-gray-500">Ctrl + S 또는 저장 버튼으로 반영</span>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btnCancelEdit" class="px-4 py-2 rounded text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">취소</button>
+          <button type="button" id="btnSaveEdit" class="px-5 py-2 rounded text-xs bg-[#008275] hover:bg-[#00655b] text-white font-bold shadow">문서 저장하기</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Backup / Data Manager Modal -->
+  <div id="backupModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#232528] rounded-lg shadow-2xl max-w-lg w-full p-5 border border-gray-300 dark:border-gray-700">
+      <div class="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-gray-700">
+        <h3 class="font-bold text-base text-gray-900 dark:text-white flex items-center gap-2">
+          <svg class="w-5 h-5 text-[#008275]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+          캐릭터 데이터 백업 / 복원
+        </h3>
+        <button id="btnCloseBackupModal" class="text-gray-400 hover:text-gray-600 text-lg">&times;</button>
+      </div>
+      <div class="py-4 space-y-4 text-xs text-gray-600 dark:text-gray-300">
+        <p>자작 캐릭터 데이터는 브라우저 내부(LocalStorage)에 안전하게 저장됩니다. 다른 기기로 옮기거나 소장하려면 JSON 파일로 내보내세요.</p>
+        
+        <div class="flex gap-2">
+          <button id="btnExportJson" class="flex-1 py-2 px-3 bg-[#008275] text-white rounded font-bold hover:bg-[#00655b] flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            JSON 내보내기 (백업)
+          </button>
+          <label class="flex-1 py-2 px-3 bg-gray-600 text-white rounded font-bold hover:bg-gray-700 flex items-center justify-center gap-1.5 cursor-pointer text-center">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            JSON 불러오기
+            <input type="file" id="importJsonFile" accept=".json" class="hidden">
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Custom Modal -->
+  <div id="deleteConfirmModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-[#232528] rounded-lg shadow-2xl max-w-sm w-full p-5 border border-red-300 dark:border-red-900 text-center">
+      <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      </div>
+      <h3 class="font-bold text-gray-900 dark:text-white mb-1">캐릭터 문서를 삭제하시겠습니까?</h3>
+      <p id="deleteConfirmTargetName" class="text-xs text-gray-500 mb-5">삭제된 문서는 복구할 수 없습니다.</p>
+      <div class="flex gap-2">
+        <button id="btnCancelDelete" class="flex-1 py-2 rounded text-xs bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200">취소</button>
+        <button id="btnExecuteDelete" class="flex-1 py-2 rounded text-xs bg-red-600 text-white font-bold hover:bg-red-700">삭제하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Box -->
+  <div id="toastNotification" class="fixed bottom-5 right-5 z-50 transform translate-y-16 opacity-0 transition-all duration-300 bg-gray-900 text-white text-xs px-4 py-3 rounded-md shadow-lg flex items-center gap-2 pointer-events-none">
+    <span id="toastIcon" class="text-emerald-400">✓</span>
+    <span id="toastMessage">알림</span>
+  </div>
+
+  <!-- Main Script Logic -->
+  <script>
+    // Initial rich sample dataset representing Namuwiki-style OCs with inline footnotes
+    const INITIAL_CHARACTERS = [
+      {
+        id: "oc_lucian",
+        name: "루시안 발렌타인",
+        subName: "Lucian Valentine / ルシアン",
+        categories: ["자작 캐릭터", "판타지", "아르카디아 성기사단", "은발적안", "INTJ"],
+        themeColor: "#2a5298",
+        imageUrl: "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=600&auto=format&fit=crop&q=80",
+        quote: "꺾이지 않는 신념만이 어둠을 가르는 유일한 검이다.",
+        lastModified: "2026-09-16 22:45:10",
+        infobox: [
+          { key: "이명", val: "은빛 늑대 (Silver Wolf)" },
+          { key: "성별", val: "남성" },
+          { key: "나이", val: "24세" },
+          { key: "생일", val: "11월 14일 (전갈자리)" },
+          { key: "신체", val: "184cm, 77kg, O형" },
+          { key: "종족", val: "인간 (고대 성혈 혼혈)" },
+          { key: "소속", val: "아르카디아 성기사단 제3성검대장" },
+          { key: "주 무기", val: "성검 『아스트랄리스』, 은제 결계 건틀릿" },
+          { key: "MBTI", val: "INTJ-A (용의주도한 전략가)" },
+          { key: "좋아하는 것", val: "홍차(얼그레이), 고요한 서재, 검술 단련" },
+          { key: "싫어하는 것", val: "비효율, 기만과 배신, 단 음식" }
+        ],
+        overview: "대륙 최강의 무력 집단인 **아르카디아 성기사단**의 최연소 대대장.[* 기사단 창설 300년 이래 역대 두 번째 기록이다.]\n냉철하고 철두철미한 원칙주의자이지만, 전장에서는 누구보다 앞장서서 부하들을 지키는 묵직한 카리스마를 지녔다. 고대 마검의 봉인을 수호하는 가문의 유일한 생존자이기도 하다.",
+        appearance: "빛을 반사하는 결 고운 은발과 깊은 석류석(가넷)빛 눈동자가 인상적인 청년.\n늘 군더더기 없는 순백의 제복과 남색 망토를 단정하게 착용하고 있으며, 왼쪽 뺨에는 어린 시절 마물과의 격전에서 생긴 옅은 흉터가 남아있다. 표정 변화가 거의 없어 첫인상은 다소 다가가기 어려운 편.",
+        personality: "감정보다 논리와 규율을 우선시하는 냉철한 성격.\n그러나 사리사욕이 전혀 없으며, 타인에게 엄격한 만큼 자신에게는 몇 배나 더 가혹하다. 사실 무뚝뚝한 말투 뒤에 주변 사람들을 세심하게 챙기는 츤데레적인 면모가 있다. ~~부하들이 남긴 서류의 오탈자를 보면 밤을 새워서라도 다 고쳐야 직성이 풀린다.~~",
+        story: "성도 아르카디아의 명문 발렌타인 가문의 후계자로 태어났으나, 12세 때 정체불명의 심연 교단에 의해 가문 전체가 궤멸당했다.[* 대륙력 742년 '심연의 밤' 참사를 지칭한다.]\n[spoiler]당시 가문을 습격한 배후는 바로 기사단 상층부의 배신자였으며, 루시안은 이 진실을 홀로 감춘 채 내부의 첩자를 색출하기 위해 기사단장이 되려 하고 있다.[/spoiler]\n이후 고아로서 밑바닥부터 검술을 연마하여 20세의 나이에 성기사단 지휘관 자리에 올랐으며, 현재는 대륙 곳곳에서 발생하는 마수 이상 폭주 사태를 조사하고 있다.",
+        skills: [
+          {
+            name: "섬광의 일격 (Flash Slash)",
+            type: "액티브 / 검술",
+            desc: "빛의 마력을 검신에 응축하여 눈에 보이지 않는 속도로 공간을 베어 가른다. 참격의 궤적에 남은 잔상이 폭발하며 추가 피해를 입힌다."
+          },
+          {
+            name: "은빛 결계전 (Aegis of Silver)",
+            type: "방어 / 결계",
+            desc: "왼손의 은제 건틀릿을 전개하여 반경 5m 내의 모든 아군을 마법 탄막 및 정신 공격으로부터 절대 방어한다.[* 아르카디아 기사단 비전 법전 제14조에 명시된 비상 방벽술.]"
+          },
+          {
+            name: "발렌타인의 각성 (Ancient Blood)",
+            type: "패시브 / 고유 능력",
+            desc: "체력이 30% 이하로 떨어지면 눈동자가 진홍색으로 발광하며 모든 신체 능력과 마력 전도율이 2배로 상승한다."
+          }
+        ],
+        relations: [
+          {
+            target: "엘레나 폰 로젠베르크",
+            relation: "소꿉친구 & 수석 마도사",
+            desc: "가문 멸망 전부터 알고 지낸 사이. 차가운 루시안이 유일하게 한숨을 쉬며 편하게 대하는 상대."
+          },
+          {
+            target: "카인 블러드베인",
+            relation: "숙적 & 라이벌",
+            desc: "심연 교단의 집행관. 가문 습격 당일 마주쳤던 인물로, 마주칠 때마다 살기를 숨기지 않는다."
+          }
+        ],
+        quotes: [
+          "검을 쥔 자가 망설이면 베어야 할 것은 악이 아니라 무고한 이들의 피가 된다.",
+          "나는 동료의 등을 지키기 위해 검을 들었을 뿐, 영웅 칭호 따위는 필요 없다.",
+          "단 것을 권하지 마라. 머리가 둔해진다... (그래도 주면 마지못해 먹는다)"
+        ],
+        trivia: [
+          "성기사단 내 인기투표에서 3년 연속 1위를 차지했으나 본인은 소음공해라며 게시판을 철거해버렸다.",
+          "동물을 매우 좋아하지만, 특유의 살기 어린 눈빛 때문에 길고양이들이 다 도망친다. ~~본인은 이를 몹시 섭섭해하고 있다.~~",
+          "술에 매우 약해서 포도주 반 잔만 마셔도 평소와 달리 부하들에게 진심 어린 칭찬을 쏟아내는 주사가 있다."
+        ]
+      },
+      {
+        id: "oc_seraphina",
+        name: "세라피나 로제트",
+        subName: "Seraphina Rosette / セラフィナ",
+        categories: ["자작 캐릭터", "스팀펑크", "발명가", "천재", "ENFP"],
+        themeColor: "#c86b29",
+        imageUrl: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80",
+        quote: "세상에 고칠 수 없는 기계와 풀리지 않는 비밀은 없어!",
+        lastModified: "2026-09-15 18:20:00",
+        infobox: [
+          { key: "이명", val: "기어의 마녀, 톱니바퀴 연금술사" },
+          { key: "성별", val: "여성" },
+          { key: "나이", val: "19세" },
+          { key: "생일", val: "4월 3일 (양자리)" },
+          { key: "신체", val: "158cm, 46kg, B형" },
+          { key: "종족", val: "인간" },
+          { key: "소속", val: "스팀하임 로제트 공방 마스터" },
+          { key: "주 무기", val: "개조 렌치 건 『스파크 볼트』, 기계 골렘 퐁퐁" },
+          { key: "MBTI", val: "ENFP-T (재기발랄한 활동가)" },
+          { key: "좋아하는 것", val: "오래된 태엽, 황동 냄새, 탄산음료" },
+          { key: "싫어하는 것", val: "기름때 안 묻히는 샌님들, 지루한 규칙" }
+        ],
+        overview: "증기기관과 마법 공학의 중심지인 안개 도시 스팀하임의 천재 발명가.[* 스팀하임 공업 아카데미를 3년 조기 수석 졸업했다.]\n폭발 사고를 밥 먹듯이 일으키는 문제아지만, 그녀가 만든 발명품들은 혁신 그 자체로 불린다.",
+        appearance: "헝클어진 구릿빛 단발머리에 항상 황동색 고글을 머리 위에 얹고 다닌다.\n작업용 가죽 앞치마 곳곳에 스패너와 볼트가 가득 꽂혀 있으며, 양 뺨에는 거의 항상 검은 그을음이 묻어있다.",
+        personality: "호기심이 극도로 강하고 에너지가 넘치며, 한번 연구에 꽂히면 사흘 밤낮을 먹지도 않고 공방에 틀어박힌다.\n유쾌하고 붙임성이 좋아 도시의 모든 상인 및 뒷골목 사람들과도 친구다.",
+        story: "어릴 적 버려진 시계탑 안에서 기억을 잃은 채 발견되었다.\n그녀가 손을 대는 고장 난 기계는 마법처럼 다시 움직였고, 15세의 나이에 자작 공방을 열었다. [spoiler]사실 그녀의 몸속 심장은 정밀한 태엽 크로노스 엔진으로 대체되어 있는 고대 인조인간의 후예다.[/spoiler]",
+        skills: [
+          {
+            name: "과충전 오버로드 (Overcharge)",
+            type: "액티브 / 공격",
+            desc: "휴대용 에테르 배터리를 과부하 시켜 전방에 고압 전격과 파편을 동시에 방출한다."
+          },
+          {
+            name: "골렘 사출 『퐁퐁 2호』",
+            type: "소환 / 지원",
+            desc: "주머니 크기의 태엽 캡슐을 던져 자폭 혹은 아군 보호용 소형 증기 골렘을 즉시 기동한다."
+          }
+        ],
+        relations: [
+          {
+            target: "루시안 발렌타인",
+            relation: "무기 정비 의뢰인",
+            desc: "자꾸 자기 검을 고쳐달라고 맡기면서도 부가 기능(로켓 부스터 등)을 달지 말라고 엄포를 놓는다."
+          }
+        ],
+        quotes: [
+          "폭발은 실패가 아니야! 단지 너무 빠르고 화려하게 성공했을 뿐이지!",
+          "태엽 소리를 들어봐. 이 아이도 지금 살아서 숨 쉬고 싶어 하잖아?"
+        ],
+        trivia: [
+          "고글을 벗으면 의외로 엄청난 미소녀라는 소문이 있지만 고글을 벗는 일이 거의 없다.",
+          "기계와 대화할 수 있다고 주장하는데, 실제로 기계에 말을 걸면 작동이 잘 된다."
+        ]
+      }
+    ];
+
+    // State Manager
+    const AppState = {
+      characters: [],
+      currentId: null,
+      currentView: 'home', // 'home' or 'article'
+      isDarkMode: false,
+      homeCategoryFilter: '전체',
+
+      init() {
+        const savedData = localStorage.getItem('namu_oc_characters');
+        if (savedData) {
+          try {
+            this.characters = JSON.parse(savedData);
+          } catch (e) {
+            this.characters = INITIAL_CHARACTERS;
+          }
+        } else {
+          this.characters = INITIAL_CHARACTERS;
+          this.save();
+        }
+
+        // Theme init
+        this.isDarkMode = localStorage.getItem('namu_oc_theme') === 'dark' || 
+          (!('namu_oc_theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        this.applyTheme();
+
+        // Check URL hash for routing
+        const hash = window.location.hash.replace('#', '').trim();
+        if (hash && hash !== 'home' && this.getCharById(hash)) {
+          this.currentView = 'article';
+          this.currentId = hash;
+        } else {
+          this.currentView = 'home';
+          this.currentId = null;
+        }
+      },
+
+      save() {
+        localStorage.setItem('namu_oc_characters', JSON.stringify(this.characters));
+        renderSidebar();
+        if (this.currentView === 'home') {
+          renderHomeView();
+        }
+      },
+
+      applyTheme() {
+        if (this.isDarkMode) {
+          document.documentElement.classList.add('dark');
+          document.getElementById('sunIcon').classList.remove('hidden');
+          document.getElementById('moonIcon').classList.add('hidden');
+          localStorage.setItem('namu_oc_theme', 'dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+          document.getElementById('sunIcon').classList.add('hidden');
+          document.getElementById('moonIcon').classList.remove('hidden');
+          localStorage.setItem('namu_oc_theme', 'light');
+        }
+      },
+
+      toggleTheme() {
+        this.isDarkMode = !this.isDarkMode;
+        this.applyTheme();
+      },
+
+      navigateToHome() {
+        this.currentView = 'home';
+        this.currentId = null;
+        window.location.hash = 'home';
+        renderView();
+      },
+
+      navigateToArticle(id) {
+        if (!this.getCharById(id)) return;
+        this.currentView = 'article';
+        this.currentId = id;
+        window.location.hash = id;
+        renderView();
+      },
+
+      getCurrentChar() {
+        return this.getCharById(this.currentId) || this.characters[0] || null;
+      },
+
+      getCharById(id) {
+        return this.characters.find(c => c.id === id);
+      },
+
+      upsertCharacter(charObj) {
+        const idx = this.characters.findIndex(c => c.id === charObj.id);
+        if (idx >= 0) {
+          this.characters[idx] = charObj;
+        } else {
+          this.characters.unshift(charObj);
+        }
+        this.currentView = 'article';
+        this.currentId = charObj.id;
+        this.save();
+        renderView();
+      },
+
+      deleteCurrentCharacter() {
+        if (!this.currentId) return;
+        this.characters = this.characters.filter(c => c.id !== this.currentId);
+        this.save();
+        this.navigateToHome();
+      }
+    };
+
+    // Helper: Toast Alert
+    function showToast(msg, isSuccess = true) {
+      const toast = document.getElementById('toastNotification');
+      const icon = document.getElementById('toastIcon');
+      const message = document.getElementById('toastMessage');
+
+      icon.textContent = isSuccess ? '✓' : '⚠️';
+      icon.className = isSuccess ? 'text-emerald-400' : 'text-amber-400';
+      message.textContent = msg;
+
+      toast.classList.remove('translate-y-16', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-16', 'opacity-0');
+      }, 2500);
+    }
+
+    // Global collector for footnotes during article rendering
+    let activeArticleFootnotes = [];
+
+    // Helper: Convert HEX to RGBA string
+    function hexToRgba(hexColor, alpha = 0.15) {
+      if (!hexColor) return `rgba(0, 130, 117, ${alpha})`;
+      let hex = hexColor.replace('#', '').trim();
+      if (hex.length === 3) {
+        hex = hex.split('').map(c => c + c).join('');
+      }
+      if (hex.length !== 6) return `rgba(0, 130, 117, ${alpha})`;
+      const r = parseInt(hex.substring(0, 2), 16) || 0;
+      const g = parseInt(hex.substring(2, 4), 16) || 0;
+      const b = parseInt(hex.substring(4, 6), 16) || 0;
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    // Helper: Calculate contrast text color (black or white) based on background luminance
+    function getContrastTextColor(hexColor) {
+      if (!hexColor) return '#ffffff';
+      let hex = hexColor.replace('#', '').trim();
+      if (hex.length === 3) {
+        hex = hex.split('').map(c => c + c).join('');
+      }
+      if (hex.length !== 6) return '#ffffff';
+      const r = parseInt(hex.substring(0, 2), 16) || 0;
+      const g = parseInt(hex.substring(2, 4), 16) || 0;
+      const b = parseInt(hex.substring(4, 6), 16) || 0;
+      const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+      return yiq >= 150 ? '#1f2937' : '#ffffff';
+    }
+
+    // Helper: Text parser for Namuwiki-style strike, spoilers, bold, and inline footnotes [* 내용]
+    function parseNamuSyntax(text, registerFootnotes = true) {
+      if (!text) return '';
+      let safe = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+      // Strike through: ~~text~~
+      safe = safe.replace(/~~(.*?)~~/g, '<del class="text-gray-400 dark:text-gray-500 hover:text-gray-600 transition decoration-1">$1</del>');
+
+      // Spoilers: [spoiler]text[/spoiler]
+      safe = safe.replace(/\[spoiler\](.*?)\[\/spoiler\]/gi, '<span class="wiki-spoiler" title="마우스를 올리거나 터치하면 보입니다.">$1</span>');
+
+      // Bold: **text**
+      safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-gray-900 dark:text-white">$1</strong>');
+
+      // Inline Footnotes: [* 각주내용] or [각주: 각주내용]
+      if (registerFootnotes) {
+        safe = safe.replace(/\[(?:\*|각주:)\s*(.*?)\]/g, (match, noteContent) => {
+          const trimmedNote = noteContent.trim();
+          activeArticleFootnotes.push(trimmedNote);
+          const fnIdx = activeArticleFootnotes.length;
+          
+          return `<span class="wiki-fn-wrap group inline-block font-sans text-xs">` +
+            `<a href="#fn-${fnIdx}" id="rfn-${fnIdx}" class="text-[#008275] dark:text-emerald-400 font-bold hover:underline px-0.5 select-none" title="${trimmedNote.replace(/"/g, '&quot;')}">[${fnIdx}]</a>` +
+            `<span class="wiki-fn-tooltip pointer-events-none group-hover:pointer-events-auto absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-64 p-2 bg-gray-900/95 text-white text-[11px] rounded shadow-xl z-50 whitespace-normal leading-normal text-left backdrop-blur-xs border border-gray-700">` +
+              `<span class="text-emerald-400 font-bold mr-1">[${fnIdx}]</span>${trimmedNote}` +
+            `</span>` +
+          `</span>`;
+        });
+      }
+
+      return safe;
+    }
+
+    // Master View Switcher (Home vs Article)
+    function renderView() {
+      const homeView = document.getElementById('homeView');
+      const articleView = document.getElementById('articleView');
+
+      if (AppState.currentView === 'home') {
+        homeView.classList.remove('hidden');
+        articleView.classList.add('hidden');
+        renderHomeView();
+      } else {
+        homeView.classList.add('hidden');
+        articleView.classList.remove('hidden');
+        renderArticle();
+      }
+      renderSidebar();
+    }
+
+    // Render Home / Front Page (대문)
+    function renderHomeView() {
+      const totalChars = AppState.characters.length;
+      let totalSkills = 0;
+      const categoriesSet = new Set();
+      let latestTime = '-';
+
+      AppState.characters.forEach(c => {
+        if (c.skills) totalSkills += c.skills.length;
+        if (c.categories) c.categories.forEach(cat => categoriesSet.add(cat.trim()));
+      });
+
+      if (totalChars > 0) {
+        const sorted = [...AppState.characters].sort((a, b) => (b.lastModified || '').localeCompare(a.lastModified || ''));
+        latestTime = sorted[0]?.lastModified ? sorted[0].lastModified.split(' ')[0] : '오늘';
+      }
+
+      // 1. Statistics Cards
+      document.getElementById('statTotalChars').textContent = totalChars;
+      document.getElementById('statTotalSkills').textContent = totalSkills;
+      document.getElementById('statTotalCategories').textContent = categoriesSet.size;
+      document.getElementById('statRecentTime').textContent = latestTime;
+
+      // 2. Featured Character (Pick random or first)
+      const featuredContainer = document.getElementById('featuredCharCard');
+      if (totalChars > 0) {
+        const featured = AppState.characters[Math.floor(Math.random() * totalChars)];
+        const ftTheme = featured.themeColor || '#008275';
+        featuredContainer.innerHTML = `
+          <div class="sm:w-48 h-48 bg-gray-100 dark:bg-gray-800 shrink-0 overflow-hidden flex items-center justify-center border-b sm:border-b-0 sm:border-r border-gray-200 dark:border-gray-700">
+            <img src="${featured.imageUrl || 'https://placehold.co/300x400/' + ftTheme.replace('#', '') + '/ffffff?text=' + encodeURIComponent(featured.name)}" 
+              alt="${featured.name}" class="h-full w-full object-cover">
+          </div>
+          <div class="p-4 flex-1 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${ftTheme}"></span>
+                <span class="text-xs font-bold text-gray-500 dark:text-gray-400">${featured.categories ? featured.categories[0] : 'OC'}</span>
+                <span class="text-xs text-gray-400">| ${featured.subName || ''}</span>
+              </div>
+              <h3 class="text-lg font-bold text-gray-900 dark:text-white hover:text-[#008275] cursor-pointer" onclick="AppState.navigateToArticle('${featured.id}')">
+                ${featured.name}
+              </h3>
+              ${featured.quote ? `<p class="text-xs italic text-gray-600 dark:text-gray-300 mt-1 border-l-2 pl-2 border-[#008275]">“${featured.quote}”</p>` : ''}
+              <p class="text-xs text-gray-600 dark:text-gray-400 mt-2 line-clamp-2 leading-relaxed">
+                ${(featured.overview || '').replace(/\[\*.*?\]/g, '').replace(/\*\*/g, '').replace(/\[spoiler\].*?\[\/spoiler\]/g, '...') || '캐릭터 개요가 등록되어 있습니다.'}
+              </p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-between">
+              <span class="text-[11px] text-gray-400">스킬 ${featured.skills ? featured.skills.length : 0}개 등록됨</span>
+              <button onclick="AppState.navigateToArticle('${featured.id}')" class="text-xs font-bold text-[#008275] dark:text-emerald-400 hover:underline flex items-center gap-1">
+                문서 열람하기 →
+              </button>
+            </div>
+          </div>
+        `;
+      } else {
+        featuredContainer.innerHTML = `<div class="p-6 text-center text-xs text-gray-400 w-full">등록된 캐릭터가 없습니다. 새 문서를 작성해보세요!</div>`;
+      }
+
+      // 3. Category Filter Pills
+      const pillsContainer = document.getElementById('homeCategoryPills');
+      pillsContainer.innerHTML = '';
+      const allPills = ['전체', ...Array.from(categoriesSet)];
+      allPills.forEach(cat => {
+        const isSelected = AppState.homeCategoryFilter === cat;
+        const btn = document.createElement('button');
+        btn.className = `text-xs px-2.5 py-1 rounded-full border transition ${
+          isSelected 
+            ? 'bg-[#008275] text-white border-[#008275] font-bold shadow-xs' 
+            : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-[#008275]'
+        }`;
+        btn.textContent = cat;
+        btn.onclick = () => {
+          AppState.homeCategoryFilter = cat;
+          renderHomeView();
+        };
+        pillsContainer.appendChild(btn);
+      });
+
+      // 4. Character Cards Grid
+      const cardsGrid = document.getElementById('homeCharacterCardsGrid');
+      cardsGrid.innerHTML = '';
+
+      const filtered = AppState.characters.filter(c => {
+        if (AppState.homeCategoryFilter === '전체') return true;
+        return c.categories && c.categories.includes(AppState.homeCategoryFilter);
+      });
+
+      document.getElementById('galleryCount').textContent = `총 ${filtered.length}명`;
+
+      filtered.forEach(c => {
+        const theme = c.themeColor || '#008275';
+        const card = document.createElement('div');
+        card.className = "border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-[#25282c] hover:border-[#008275] hover:shadow-sm transition cursor-pointer flex gap-3 items-center group";
+        card.onclick = () => AppState.navigateToArticle(c.id);
+        
+        card.innerHTML = `
+          <div class="w-14 h-14 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0 border border-gray-200 dark:border-gray-700">
+            <img src="${c.imageUrl || 'https://placehold.co/100x100/' + theme.replace('#', '') + '/ffffff?text=' + encodeURIComponent(c.name[0])}" 
+              alt="${c.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-200">
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5 mb-0.5">
+              <span class="w-2 h-2 rounded-full shrink-0" style="background-color: ${theme}"></span>
+              <h4 class="text-xs font-bold text-gray-900 dark:text-white truncate group-hover:text-[#008275]">${c.name}</h4>
+            </div>
+            <p class="text-[11px] text-gray-400 truncate">${c.subName || (c.categories ? c.categories.join(', ') : '')}</p>
+            <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-1 italic">${c.quote || '기록된 한마디가 없습니다.'}</p>
+          </div>
+        `;
+        cardsGrid.appendChild(card);
+      });
+
+      // 5. Recent Changes Table
+      const recentTbody = document.getElementById('homeRecentChangesTbody');
+      recentTbody.innerHTML = '';
+      const recentList = [...AppState.characters]
+        .sort((a, b) => (b.lastModified || '').localeCompare(a.lastModified || ''))
+        .slice(0, 7);
+
+      recentList.forEach(c => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-gray-50 dark:hover:bg-gray-800/80 cursor-pointer transition";
+        tr.onclick = () => AppState.navigateToArticle(c.id);
+
+        const timeStr = c.lastModified ? c.lastModified.split(' ')[0] : '-';
+        tr.innerHTML = `
+          <td class="p-2 text-gray-800 dark:text-gray-200 font-semibold flex items-center gap-1.5 truncate">
+            <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background-color: ${c.themeColor || '#008275'}"></span>
+            <span class="truncate hover:text-[#008275] hover:underline">${c.name}</span>
+          </td>
+          <td class="p-2 text-right text-gray-400 text-[11px] shrink-0 font-mono">
+            ${timeStr}
+          </td>
+        `;
+        recentTbody.appendChild(tr);
+      });
+    }
+
+    // Render Sidebar List
+    function renderSidebar(filterQuery = '') {
+      const ul = document.getElementById('characterListUl');
+      const countSpan = document.getElementById('characterCount');
+      ul.innerHTML = '';
+      countSpan.textContent = AppState.characters.length;
+
+      // Always prepend the "대문 (메인 화면)" button to the sidebar
+      const isHome = AppState.currentView === 'home';
+      const homeLi = document.createElement('li');
+      homeLi.className = `flex items-center gap-2 px-2.5 py-2 rounded cursor-pointer transition mb-1 font-bold ${
+        isHome 
+          ? 'bg-[#eef8f6] dark:bg-[#152e2a] text-[#008275] dark:text-emerald-400 border-l-4 border-[#008275]' 
+          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+      }`;
+      homeLi.innerHTML = `
+        <svg class="w-4 h-4 text-[#008275] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        <span class="truncate">대문 (메인 화면)</span>
+      `;
+      homeLi.addEventListener('click', () => {
+        AppState.navigateToHome();
+        document.getElementById('wikiSidebar').classList.add('hidden');
+      });
+      ul.appendChild(homeLi);
+
+      const filtered = AppState.characters.filter(c => {
+        if (!filterQuery) return true;
+        const q = filterQuery.toLowerCase();
+        return c.name.toLowerCase().includes(q) || 
+               (c.categories && c.categories.some(cat => cat.toLowerCase().includes(q))) ||
+               (c.subName && c.subName.toLowerCase().includes(q));
+      });
+
+      if (filtered.length === 0) {
+        const emptyLi = document.createElement('li');
+        emptyLi.className = "text-xs text-gray-400 py-3 text-center";
+        emptyLi.textContent = "검색 결과가 없습니다.";
+        ul.appendChild(emptyLi);
+        return;
+      }
+
+      filtered.forEach(c => {
+        const isCurrent = AppState.currentView === 'article' && c.id === AppState.currentId;
+        const li = document.createElement('li');
+        li.className = `group flex items-center justify-between px-2.5 py-2 rounded cursor-pointer transition ${
+          isCurrent 
+            ? 'bg-[#eef8f6] dark:bg-[#152e2a] text-[#008275] dark:text-emerald-400 font-bold border-l-4 border-[#008275]' 
+            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+        }`;
+        
+        li.innerHTML = `
+          <div class="flex items-center gap-2 truncate">
+            <span class="w-2 h-2 rounded-full shrink-0" style="background-color: ${c.themeColor || '#008275'}"></span>
+            <span class="truncate">${c.name}</span>
+          </div>
+          <span class="text-[10px] text-gray-400 dark:text-gray-500 font-normal shrink-0">
+            ${c.categories && c.categories[0] ? c.categories[0] : 'OC'}
+          </span>
+        `;
+
+        li.addEventListener('click', () => {
+          AppState.navigateToArticle(c.id);
+          // Close mobile drawer if opened
+          document.getElementById('wikiSidebar').classList.add('hidden');
+        });
+
+        ul.appendChild(li);
+      });
+    }
+
+    // Render Article Page
+    function renderArticle() {
+      const oc = AppState.getCurrentChar();
+      if (!oc) {
+        AppState.navigateToHome();
+        return;
+      }
+
+      // Breadcrumb updates
+      document.getElementById('breadcrumbCategory').textContent = (oc.categories && oc.categories[0]) ? oc.categories[0] : '자작 캐릭터';
+      document.getElementById('breadcrumbCurrentName').textContent = oc.name;
+
+      // Reset footnote registry for this render cycle
+      activeArticleFootnotes = [];
+
+      // Title & Subtitle
+      document.getElementById('articleTitle').textContent = oc.name;
+      document.getElementById('articleSubTitle').textContent = oc.subName || '';
+      document.getElementById('articleLastModified').textContent = oc.lastModified || '방금 전';
+
+      // Categories
+      const catContainer = document.getElementById('categoryBadgeContainer');
+      catContainer.innerHTML = '';
+      if (oc.categories && oc.categories.length > 0) {
+        oc.categories.forEach(cat => {
+          const span = document.createElement('span');
+          span.className = "bg-gray-100 dark:bg-gray-800 hover:bg-[#eef8f6] text-gray-700 dark:text-gray-300 hover:text-[#008275] px-2 py-0.5 rounded cursor-pointer border border-gray-200 dark:border-gray-700 transition";
+          span.textContent = cat;
+          span.onclick = () => {
+            document.getElementById('wikiSearchInput').value = cat;
+            handleSearchInput(cat);
+          };
+          catContainer.appendChild(span);
+        });
+      }
+
+      // Top Quote Box
+      const quoteBox = document.getElementById('articleQuoteBox');
+      const quoteText = document.getElementById('articleQuoteText');
+      const themeColor = oc.themeColor || '#008275';
+
+      if (oc.quote && oc.quote.trim()) {
+        quoteText.textContent = oc.quote;
+        quoteBox.style.borderLeftColor = themeColor;
+        quoteBox.style.backgroundColor = hexToRgba(themeColor, AppState.isDarkMode ? 0.12 : 0.06);
+        const quoteSymbol = quoteBox.querySelector('span');
+        if (quoteSymbol) quoteSymbol.style.color = themeColor;
+        quoteBox.classList.remove('hidden');
+      } else {
+        quoteBox.classList.add('hidden');
+      }
+
+      // Infobox Theme Styling
+      const infoBoxCard = document.getElementById('infoBoxCard');
+      const infoBoxBanner = document.getElementById('infoBoxBanner');
+      const infoBoxImageBox = document.getElementById('infoBoxImageBox');
+      const infoBoxColorBar = document.getElementById('infoBoxColorBar');
+
+      // Set card borders and header to the character's theme color
+      infoBoxCard.style.borderColor = themeColor;
+      infoBoxBanner.style.backgroundColor = themeColor;
+      infoBoxBanner.style.color = getContrastTextColor(themeColor);
+      infoBoxImageBox.style.borderBottomColor = themeColor;
+      infoBoxColorBar.style.backgroundColor = themeColor;
+
+      document.getElementById('infoBoxCharName').textContent = oc.name;
+      document.getElementById('infoBoxImage').src = oc.imageUrl || 'https://placehold.co/400x500/' + themeColor.replace('#', '') + '/ffffff?text=' + encodeURIComponent(oc.name);
+
+      const infoTableBody = document.getElementById('infoBoxTableBody');
+      infoTableBody.innerHTML = '';
+
+      // Tint colors for table header cells (th)
+      const thBg = hexToRgba(themeColor, AppState.isDarkMode ? 0.22 : 0.10);
+      const thBorder = hexToRgba(themeColor, 0.25);
+
+      if (oc.infobox && oc.infobox.length > 0) {
+        oc.infobox.forEach(item => {
+          if (!item.key && !item.val) return;
+          const tr = document.createElement('tr');
+          tr.className = "border-b border-gray-100 dark:border-gray-800";
+          tr.innerHTML = `
+            <th class="w-28 p-2 font-semibold align-top" style="background-color: ${thBg}; color: ${themeColor}; border-right: 1px solid ${thBorder};">
+              ${parseNamuSyntax(item.key)}
+            </th>
+            <td class="p-2 text-gray-800 dark:text-gray-200 align-middle">
+              ${parseNamuSyntax(item.val)}
+            </td>
+          `;
+          infoTableBody.appendChild(tr);
+        });
+      }
+
+      // Body Sections (Parsing these registers all inline [* ...] footnotes)
+      document.getElementById('contentOverview').innerHTML = parseNamuSyntax(oc.overview || "등록된 개요가 없습니다.");
+      document.getElementById('contentAppearance').innerHTML = parseNamuSyntax(oc.appearance || "등록된 외모 설명이 없습니다.");
+      document.getElementById('contentPersonality').innerHTML = parseNamuSyntax(oc.personality || "등록된 성격 설명이 없습니다.");
+      document.getElementById('contentStory').innerHTML = parseNamuSyntax(oc.story || "등록된 스토리 행적이 없습니다.");
+
+      // Skills Section
+      const skillsContainer = document.getElementById('contentSkillsContainer');
+      skillsContainer.innerHTML = '';
+      if (oc.skills && oc.skills.length > 0) {
+        oc.skills.forEach(skill => {
+          const div = document.createElement('div');
+          div.className = "border border-gray-200 dark:border-gray-700 rounded p-3 bg-gray-50 dark:bg-gray-800/40 text-xs";
+          div.innerHTML = `
+            <div class="flex items-center justify-between font-bold text-sm mb-1 text-gray-900 dark:text-white">
+              <span class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-[#008275]"></span>
+                ${skill.name}
+              </span>
+              <span class="text-[11px] font-normal px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-[#00655b] dark:text-emerald-300">${skill.type || '능력'}</span>
+            </div>
+            <p class="text-gray-600 dark:text-gray-300 leading-relaxed pl-4">${parseNamuSyntax(skill.desc)}</p>
+          `;
+          skillsContainer.appendChild(div);
+        });
+      } else {
+        skillsContainer.innerHTML = `<p class="text-xs text-gray-400 italic">등록된 특수 능력이 없습니다.</p>`;
+      }
+
+      // Relationships Section
+      const relationsContainer = document.getElementById('contentRelationsContainer');
+      relationsContainer.innerHTML = '';
+      if (oc.relations && oc.relations.length > 0) {
+        oc.relations.forEach(rel => {
+          const div = document.createElement('div');
+          div.className = "border border-gray-200 dark:border-gray-700 rounded p-3 text-xs bg-white dark:bg-gray-800";
+          div.innerHTML = `
+            <div class="font-bold text-sm text-[#008275] dark:text-emerald-400 mb-0.5 flex items-center justify-between">
+              <span>${rel.target}</span>
+              <span class="text-[10px] text-gray-400 font-normal border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded">${rel.relation}</span>
+            </div>
+            <p class="text-gray-600 dark:text-gray-300 mt-1.5 leading-normal">${parseNamuSyntax(rel.desc)}</p>
+          `;
+          relationsContainer.appendChild(div);
+        });
+      } else {
+        relationsContainer.innerHTML = `<p class="text-xs text-gray-400 italic col-span-2">등록된 관계 정보가 없습니다.</p>`;
+      }
+
+      // Quotes Section
+      const quotesList = document.getElementById('contentQuotesList');
+      quotesList.innerHTML = '';
+      if (oc.quotes && oc.quotes.length > 0) {
+        oc.quotes.forEach(q => {
+          const li = document.createElement('li');
+          li.className = "pl-3 border-l-2 border-[#00a495] italic text-gray-700 dark:text-gray-300 py-0.5";
+          li.innerHTML = `“${parseNamuSyntax(q)}”`;
+          quotesList.appendChild(li);
+        });
+      } else {
+        quotesList.innerHTML = `<li class="text-xs text-gray-400 italic">등록된 명대사가 없습니다.</li>`;
+      }
+
+      // Trivia Section
+      const triviaList = document.getElementById('contentTriviaList');
+      triviaList.innerHTML = '';
+      if (oc.trivia && oc.trivia.length > 0) {
+        oc.trivia.forEach(t => {
+          const li = document.createElement('li');
+          li.innerHTML = parseNamuSyntax(t);
+          triviaList.appendChild(li);
+        });
+      } else {
+        triviaList.innerHTML = `<li class="text-xs text-gray-400 italic">등록된 여담이 없습니다.</li>`;
+      }
+
+      // Footnotes Section Rendering (purely driven by inline [* ...] references in text)
+      const finalFootnotes = activeArticleFootnotes;
+
+      const footnotesList = document.getElementById('footnotesList');
+      footnotesList.innerHTML = '';
+      const hasFootnotes = finalFootnotes.length > 0;
+      if (hasFootnotes) {
+        document.getElementById('sec-footnotes').classList.remove('hidden');
+        finalFootnotes.forEach((fn, idx) => {
+          const fnNumber = idx + 1;
+          const li = document.createElement('li');
+          li.id = `fn-${fnNumber}`;
+          li.className = "py-1 px-1.5 rounded transition-colors duration-200 text-[11px] leading-relaxed flex items-start justify-between gap-2";
+          li.innerHTML = `
+            <div class="flex-1">
+              <span class="font-bold text-[#008275] dark:text-emerald-400 mr-1">[${fnNumber}]</span>
+              <span>${parseNamuSyntax(fn, false)}</span>
+            </div>
+            <a href="#rfn-${fnNumber}" class="text-[#008275] dark:text-emerald-400 hover:underline font-bold text-xs shrink-0 select-none" title="본문 위치로 이동">↑</a>
+          `;
+          footnotesList.appendChild(li);
+        });
+      } else {
+        document.getElementById('sec-footnotes').classList.add('hidden');
+      }
+
+      // Perfectly aligned hierarchical Table of Contents (TOC)
+      const tocList = document.getElementById('tocList');
+      tocList.innerHTML = `
+        <li class="py-0.5">
+          <a href="#sec-overview" class="hover:text-[#008275] hover:underline flex items-center gap-1.5 transition">
+            <span class="font-bold text-[#008275] dark:text-emerald-400 w-5 text-right shrink-0">1.</span>
+            <span>개요</span>
+          </a>
+        </li>
+        <li class="py-0.5">
+          <a href="#sec-details" class="hover:text-[#008275] hover:underline flex items-center gap-1.5 transition">
+            <span class="font-bold text-[#008275] dark:text-emerald-400 w-5 text-right shrink-0">2.</span>
+            <span>상세 정보</span>
+          </a>
+          <!-- Sub-items with clean tree border line and uniform indentation -->
+          <ul class="ml-5 pl-2.5 border-l-2 border-gray-200 dark:border-gray-700 mt-1 space-y-1">
+            <li>
+              <a href="#sec-appearance" class="hover:text-[#008275] hover:underline flex items-center gap-1.5 text-[11px] text-gray-600 dark:text-gray-400 hover:text-gray-900 transition">
+                <span class="font-semibold text-[#00a495] dark:text-emerald-500 w-6 text-right shrink-0">2.1.</span>
+                <span>외모 및 인상</span>
+              </a>
+            </li>
+            <li>
+              <a href="#sec-personality" class="hover:text-[#008275] hover:underline flex items-center gap-1.5 text-[11px] text-gray-600 dark:text-gray-400 hover:text-gray-900 transition">
+                <span class="font-semibold text-[#00a495] dark:text-emerald-500 w-6 text-right shrink-0">2.2.</span>
+                <span>성격 및 특징</span>
+              </a>
+            </li>
+          </ul>
+        </li>
+        <li class="py-0.5">
+          <a href="#sec-story" class="hover:text-[#008275] hover:underline flex items-center gap-1.5 transition">
+            <span class="font-bold text-[#008275] dark:text-emerald-400 w-5 text-right shrink-0">3.</span>
+            <span>작중 행적 및 과거사</span>
+          </a>
+        </li>
+        <li class="py-0.5">
+          <a href="#sec-skills" class="hover:text-[#008275] hover:underline flex items-center gap-1.5 transition">
+            <span class="font-bold text-[#008275] dark:text-emerald-400 w-5 text-right shrink-0">4.</span>
+            <span>능력 및 스킬</span>
+          </a>
+        </li>
+        <li class="py-0.5">
+          <a href="#sec-relations" class="hover:text-[#008275] hover:underline flex items-center gap-1.5 transition">
+            <span class="font-bold text-[#008275] dark:text-emerald-400 w-5 text-right shrink-0">5.</span>
+            <span>대인 관계</span>
+          </a>
+        </li>
+        <li class="py-0.5">
+          <a href="#sec-quotes" class="hover:text-[#008275] hover:underline flex items-center gap-1.5 transition">
+            <span class="font-bold text-[#008275] dark:text-emerald-400 w-5 text-right shrink-0">6.</span>
+            <span>명대사</span>
+          </a>
+        </li>
+        <li class="py-0.5">
+          <a href="#sec-trivia" class="hover:text-[#008275] hover:underline flex items-center gap-1.5 transition">
+            <span class="font-bold text-[#008275] dark:text-emerald-400 w-5 text-right shrink-0">7.</span>
+            <span>여담</span>
+          </a>
+        </li>
+        ${hasFootnotes ? `
+        <li class="py-0.5">
+          <a href="#sec-footnotes" class="hover:text-[#008275] hover:underline flex items-center gap-1.5 transition">
+            <span class="font-bold text-[#008275] dark:text-emerald-400 w-5 text-right shrink-0">8.</span>
+            <span>각주 (${finalFootnotes.length})</span>
+          </a>
+        </li>` : ''}
+      `;
+    }
+
+    // Search Autocomplete Handler
+    function handleSearchInput(query) {
+      const dropdown = document.getElementById('searchResultsDropdown');
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (!query || !query.trim()) {
+        dropdown.classList.add('hidden');
+        clearBtn.classList.add('hidden');
+        return;
+      }
+      clearBtn.classList.remove('hidden');
+
+      const q = query.trim().toLowerCase();
+      const matches = AppState.characters.filter(c => {
+        return c.name.toLowerCase().includes(q) ||
+               (c.subName && c.subName.toLowerCase().includes(q)) ||
+               (c.categories && c.categories.some(cat => cat.toLowerCase().includes(q))) ||
+               (c.overview && c.overview.toLowerCase().includes(q));
+      });
+
+      dropdown.innerHTML = '';
+      if (matches.length === 0) {
+        dropdown.innerHTML = `
+          <div class="p-3 text-xs text-gray-400 text-center">
+            '${query}'에 해당하는 문서가 없습니다.
+            <button id="btnCreateFromSearch" class="mt-2 block mx-auto text-[#008275] font-bold hover:underline">이 이름으로 새 문서 만들기</button>
+          </div>
+        `;
+        document.getElementById('btnCreateFromSearch')?.addEventListener('click', () => {
+          openEditModal(null, query);
+          dropdown.classList.add('hidden');
+        });
+      } else {
+        matches.forEach(c => {
+          const div = document.createElement('div');
+          div.className = "px-3 py-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0 flex items-center justify-between";
+          div.innerHTML = `
+            <div>
+              <div class="font-bold text-xs text-gray-900 dark:text-white">${c.name}</div>
+              <div class="text-[10px] text-gray-500 truncate max-w-xs">${c.subName || (c.categories ? c.categories.join(', ') : '')}</div>
+            </div>
+            <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold shrink-0">문서 이동</span>
+          `;
+          div.addEventListener('click', () => {
+            AppState.navigateToArticle(c.id);
+            dropdown.classList.add('hidden');
+            document.getElementById('wikiSearchInput').value = '';
+            clearBtn.classList.add('hidden');
+          });
+          dropdown.appendChild(div);
+        });
+      }
+      dropdown.classList.remove('hidden');
+    }
+
+    // Infobox Rows Generator for Edit Modal
+    function createInfoboxRowItem(key = '', val = '') {
+      const div = document.createElement('div');
+      div.className = "flex items-center gap-2 info-row-item";
+      div.innerHTML = `
+        <input type="text" placeholder="항목명 (예: 나이, 무기)" value="${key}" class="w-1/3 text-xs px-2.5 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white row-key font-bold">
+        <input type="text" placeholder="내용 (예: 20세, 은제 펜듈럼)" value="${val}" class="flex-1 text-xs px-2.5 py-1.5 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white row-val">
+        <button type="button" class="text-red-500 hover:text-red-700 px-1 text-sm btn-del-inforow">&times;</button>
+      `;
+      div.querySelector('.btn-del-inforow').onclick = () => div.remove();
+      return div;
+    }
+
+    // Skills Rows Generator for Edit Modal
+    function createSkillItem(skill = { name: '', type: '', desc: '' }) {
+      const div = document.createElement('div');
+      div.className = "border border-gray-200 dark:border-gray-700 p-3 rounded space-y-2 skill-item-box bg-gray-50 dark:bg-gray-800/60";
+      div.innerHTML = `
+        <div class="flex items-center justify-between gap-2">
+          <input type="text" placeholder="스킬명" value="${skill.name || ''}" class="flex-1 text-xs px-2 py-1 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white font-bold sk-name">
+          <input type="text" placeholder="종류 (예: 패시브/액티브)" value="${skill.type || ''}" class="w-28 text-xs px-2 py-1 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white sk-type">
+          <button type="button" class="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded border border-red-200 dark:border-red-900 btn-del-skill">삭제</button>
+        </div>
+        <textarea placeholder="스킬 상세 설명" rows="2" class="w-full text-xs p-2 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white sk-desc">${skill.desc || ''}</textarea>
+      `;
+      div.querySelector('.btn-del-skill').onclick = () => div.remove();
+      return div;
+    }
+
+    // Relations Rows Generator for Edit Modal
+    function createRelationItem(rel = { target: '', relation: '', desc: '' }) {
+      const div = document.createElement('div');
+      div.className = "border border-gray-200 dark:border-gray-700 p-2.5 rounded space-y-1.5 relation-item-box bg-gray-50 dark:bg-gray-800/60";
+      div.innerHTML = `
+        <div class="flex items-center justify-between gap-2">
+          <input type="text" placeholder="대상 인물명" value="${rel.target || ''}" class="flex-1 text-xs px-2 py-1 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white font-bold rel-target">
+          <input type="text" placeholder="관계 (예: 라이벌)" value="${rel.relation || ''}" class="w-32 text-xs px-2 py-1 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white rel-rel">
+          <button type="button" class="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded border border-red-200 dark:border-red-900 btn-del-rel">삭제</button>
+        </div>
+        <input type="text" placeholder="관계 설명" value="${rel.desc || ''}" class="w-full text-xs px-2 py-1 border rounded dark:bg-gray-800 dark:border-gray-700 dark:text-white rel-desc">
+      `;
+      div.querySelector('.btn-del-rel').onclick = () => div.remove();
+      return div;
+    }
+
+    // Open Edit Modal with existing or empty template
+    function openEditModal(characterId = null, presetName = '') {
+      const modal = document.getElementById('editModal');
+      const isNew = !characterId;
+      const target = isNew ? null : AppState.getCharById(characterId);
+
+      document.getElementById('modalTitle').textContent = isNew ? '새 자작 캐릭터 문서 작성' : `문서 편집 - ${target.name}`;
+      document.getElementById('editCharId').value = isNew ? `oc_${Date.now()}` : target.id;
+
+      // Basic fields
+      document.getElementById('fName').value = target ? target.name : presetName;
+      document.getElementById('fSubName').value = target ? (target.subName || '') : '';
+      document.getElementById('fCategories').value = target && target.categories ? target.categories.join(', ') : '자작 캐릭터, 주연';
+      document.getElementById('fThemeColor').value = target ? (target.themeColor || '#008275') : '#008275';
+      document.getElementById('fThemeColorPicker').value = target ? (target.themeColor || '#008275') : '#008275';
+      document.getElementById('fImageUrl').value = target ? (target.imageUrl || '') : '';
+      document.getElementById('fQuote').value = target ? (target.quote || '') : '';
+
+      // Infobox Rows
+      const infoboxContainer = document.getElementById('infoboxRowsContainer');
+      infoboxContainer.innerHTML = '';
+      const rows = target ? target.infobox : [
+        { key: '이명', val: '' },
+        { key: '나이', val: '' },
+        { key: '성별', val: '' },
+        { key: '신체', val: '' },
+        { key: '종족', val: '' },
+        { key: '소속', val: '' },
+        { key: 'MBTI', val: '' },
+        { key: '주 무기', val: '' }
+      ];
+      rows.forEach(r => infoboxContainer.appendChild(createInfoboxRowItem(r.key, r.val)));
+
+      // Stories & Overview
+      document.getElementById('fOverview').value = target ? (target.overview || '') : '';
+      document.getElementById('fAppearance').value = target ? (target.appearance || '') : '';
+      document.getElementById('fPersonality').value = target ? (target.personality || '') : '';
+      document.getElementById('fStory').value = target ? (target.story || '') : '';
+
+      // Skills
+      const skillsContainer = document.getElementById('skillsEditorList');
+      skillsContainer.innerHTML = '';
+      if (target && target.skills) {
+        target.skills.forEach(s => skillsContainer.appendChild(createSkillItem(s)));
+      }
+
+      // Relations
+      const relContainer = document.getElementById('relationsEditorList');
+      relContainer.innerHTML = '';
+      if (target && target.relations) {
+        target.relations.forEach(r => relContainer.appendChild(createRelationItem(r)));
+      }
+
+      // Quotes & Trivia
+      document.getElementById('fQuotesText').value = target && target.quotes ? target.quotes.join('\n') : '';
+      document.getElementById('fTriviaText').value = target && target.trivia ? target.trivia.join('\n') : '';
+
+      // Switch to first tab
+      document.querySelector('.tab-btn[data-tab="tab-basic"]').click();
+      modal.classList.remove('hidden');
+    }
+
+    // Save Edit Form Handler
+    function saveEditModal() {
+      const name = document.getElementById('fName').value.trim();
+      if (!name) {
+        showToast('캐릭터 이름을 입력해주세요.', false);
+        return;
+      }
+
+      const id = document.getElementById('editCharId').value;
+      const subName = document.getElementById('fSubName').value.trim();
+      const categories = document.getElementById('fCategories').value.split(',').map(s => s.trim()).filter(Boolean);
+      const themeColor = document.getElementById('fThemeColor').value.trim() || '#008275';
+      const imageUrl = document.getElementById('fImageUrl').value.trim();
+      const quote = document.getElementById('fQuote').value.trim();
+
+      // Collect Infobox
+      const infobox = [];
+      document.querySelectorAll('.info-row-item').forEach(row => {
+        const k = row.querySelector('.row-key').value.trim();
+        const v = row.querySelector('.row-val').value.trim();
+        if (k || v) infobox.push({ key: k, val: v });
+      });
+
+      // Stories
+      const overview = document.getElementById('fOverview').value;
+      const appearance = document.getElementById('fAppearance').value;
+      const personality = document.getElementById('fPersonality').value;
+      const story = document.getElementById('fStory').value;
+
+      // Skills
+      const skills = [];
+      document.querySelectorAll('.skill-item-box').forEach(sb => {
+        const n = sb.querySelector('.sk-name').value.trim();
+        const t = sb.querySelector('.sk-type').value.trim();
+        const d = sb.querySelector('.sk-desc').value.trim();
+        if (n) skills.push({ name: n, type: t, desc: d });
+      });
+
+      // Relations
+      const relations = [];
+      document.querySelectorAll('.relation-item-box').forEach(rb => {
+        const target = rb.querySelector('.rel-target').value.trim();
+        const rel = rb.querySelector('.rel-rel').value.trim();
+        const desc = rb.querySelector('.rel-desc').value.trim();
+        if (target) relations.push({ target, relation: rel, desc });
+      });
+
+      // Quotes & Trivia
+      const quotes = document.getElementById('fQuotesText').value.split('\n').map(s => s.trim()).filter(Boolean);
+      const trivia = document.getElementById('fTriviaText').value.split('\n').map(s => s.trim()).filter(Boolean);
+
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+      const charObj = {
+        id,
+        name,
+        subName,
+        categories,
+        themeColor,
+        imageUrl,
+        quote,
+        lastModified: dateStr,
+        infobox,
+        overview,
+        appearance,
+        personality,
+        story,
+        skills,
+        relations,
+        quotes,
+        trivia
+      };
+
+      AppState.upsertCharacter(charObj);
+      document.getElementById('editModal').classList.add('hidden');
+      showToast(`'${name}' 문서가 성공적으로 저장되었습니다!`);
+    }
+
+    // Bind Event Listeners
+    function setupEventListeners() {
+      // Brand Logo & Breadcrumb Home Button -> Return to Home
+      document.getElementById('brandLogo').addEventListener('click', (e) => {
+        e.preventDefault();
+        AppState.navigateToHome();
+      });
+      document.getElementById('btnBreadcrumbHome').addEventListener('click', () => AppState.navigateToHome());
+
+      // Home View Action Buttons
+      document.getElementById('btnHomeNewOC').addEventListener('click', () => openEditModal());
+      document.getElementById('btnHomeRandom').addEventListener('click', () => {
+        if (AppState.characters.length === 0) return;
+        const randIdx = Math.floor(Math.random() * AppState.characters.length);
+        AppState.navigateToArticle(AppState.characters[randIdx].id);
+      });
+      document.getElementById('btnRefreshFeatured').addEventListener('click', () => renderHomeView());
+
+      // Theme Toggle
+      document.getElementById('themeToggleBtn').addEventListener('click', () => AppState.toggleTheme());
+
+      // Search Inputs
+      const searchInput = document.getElementById('wikiSearchInput');
+      searchInput.addEventListener('input', (e) => handleSearchInput(e.target.value));
+      document.getElementById('clearSearchBtn').addEventListener('click', () => {
+        searchInput.value = '';
+        handleSearchInput('');
+      });
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#wikiSearchInput') && !e.target.closest('#searchResultsDropdown')) {
+          document.getElementById('searchResultsDropdown').classList.add('hidden');
+        }
+      });
+
+      // Sidebar Filter
+      document.getElementById('sidebarFilterInput').addEventListener('input', (e) => {
+        renderSidebar(e.target.value);
+      });
+
+      // Mobile Menu Button
+      document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+        const sidebar = document.getElementById('wikiSidebar');
+        sidebar.classList.toggle('hidden');
+      });
+
+      // Random Character Document Button
+      document.getElementById('btnRandom').addEventListener('click', () => {
+        if (AppState.characters.length === 0) return;
+        let randIdx;
+        if (AppState.characters.length === 1) {
+          randIdx = 0;
+        } else {
+          do {
+            randIdx = Math.floor(Math.random() * AppState.characters.length);
+          } while (AppState.currentView === 'article' && AppState.characters[randIdx].id === AppState.currentId);
+        }
+
+        AppState.navigateToArticle(AppState.characters[randIdx].id);
+        showToast(`랜덤 문서: '${AppState.getCurrentChar().name}'(으)로 이동했습니다.`);
+      });
+
+      // New Character Button
+      document.getElementById('btnNewOC').addEventListener('click', () => openEditModal());
+
+      // Edit Current Article Button
+      document.getElementById('btnEditArticle').addEventListener('click', () => {
+        if (AppState.currentId) openEditModal(AppState.currentId);
+      });
+
+      // Quick Edit on sections
+      document.querySelectorAll('.btn-quick-edit').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (AppState.currentId) openEditModal(AppState.currentId);
+        });
+      });
+
+      // Delete Article Flow
+      document.getElementById('btnDeleteArticle').addEventListener('click', () => {
+        const oc = AppState.getCurrentChar();
+        if (!oc) return;
+        document.getElementById('deleteConfirmTargetName').textContent = `'${oc.name}' 캐릭터 문서를 정말 삭제할까요?`;
+        document.getElementById('deleteConfirmModal').classList.remove('hidden');
+      });
+
+      document.getElementById('btnCancelDelete').addEventListener('click', () => {
+        document.getElementById('deleteConfirmModal').classList.add('hidden');
+      });
+
+      document.getElementById('btnExecuteDelete').addEventListener('click', () => {
+        AppState.deleteCurrentCharacter();
+        document.getElementById('deleteConfirmModal').classList.add('hidden');
+        showToast('문서가 삭제되었습니다.', false);
+      });
+
+      // Share Link / Copy Article Summary
+      document.getElementById('btnShareArticle').addEventListener('click', () => {
+        const oc = AppState.getCurrentChar();
+        if (!oc) return;
+        const textToCopy = `[캐릭터로그] ${oc.name} (${oc.subName || ''})\n${oc.quote || ''}\n링크: ${window.location.href}`;
+        
+        // Fallback-compatible copy mechanism
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          showToast('캐릭터 요약 정보가 클립보드에 복사되었습니다!');
+        } catch (err) {
+          showToast('복사에 실패했습니다.', false);
+        }
+        document.body.removeChild(textArea);
+      });
+
+      // Table of Contents Toggle
+      document.getElementById('btnToggleToc').addEventListener('click', function() {
+        const tocList = document.getElementById('tocList');
+        if (tocList.classList.contains('hidden')) {
+          tocList.classList.remove('hidden');
+          this.textContent = '[접기]';
+        } else {
+          tocList.classList.add('hidden');
+          this.textContent = '[펼치기]';
+        }
+      });
+
+      // Modal Tabs Navigation
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const targetTab = this.getAttribute('data-tab');
+          document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('bg-[#008275]', 'text-white');
+            b.classList.add('bg-gray-100', 'dark:bg-gray-800', 'text-gray-700', 'dark:text-gray-300');
+          });
+          this.classList.add('bg-[#008275]', 'text-white');
+          this.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'text-gray-700', 'dark:text-gray-300');
+
+          document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
+          document.getElementById(targetTab)?.classList.remove('hidden');
+        });
+      });
+
+      // Modal Color Picker Sync
+      const picker = document.getElementById('fThemeColorPicker');
+      const textCol = document.getElementById('fThemeColor');
+      picker.addEventListener('input', (e) => textCol.value = e.target.value);
+      textCol.addEventListener('input', (e) => picker.value = e.target.value);
+
+      // Add Row Buttons inside Modal
+      document.getElementById('btnAddInfoRow').addEventListener('click', () => {
+        document.getElementById('infoboxRowsContainer').appendChild(createInfoboxRowItem());
+      });
+      document.getElementById('btnAddSkill').addEventListener('click', () => {
+        document.getElementById('skillsEditorList').appendChild(createSkillItem());
+      });
+      document.getElementById('btnAddRelation').addEventListener('click', () => {
+        document.getElementById('relationsEditorList').appendChild(createRelationItem());
+      });
+
+      // Modal Save & Cancel
+      document.getElementById('btnSaveEdit').addEventListener('click', saveEditModal);
+      document.getElementById('btnCancelEdit').addEventListener('click', () => {
+        document.getElementById('editModal').classList.add('hidden');
+      });
+      document.getElementById('btnCloseModal').addEventListener('click', () => {
+        document.getElementById('editModal').classList.add('hidden');
+      });
+
+      // Backup & Restore Modal
+      const backupModal = document.getElementById('backupModal');
+      document.getElementById('btnBackupData').addEventListener('click', () => backupModal.classList.remove('hidden'));
+      document.getElementById('btnCloseBackupModal').addEventListener('click', () => backupModal.classList.add('hidden'));
+
+      // Export JSON
+      document.getElementById('btnExportJson').addEventListener('click', () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(AppState.characters, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `oc_wiki_backup_${new Date().toISOString().slice(0, 10)}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        showToast('JSON 백업 파일이 다운로드되었습니다.');
+      });
+
+      // Import JSON
+      document.getElementById('importJsonFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          try {
+            const imported = JSON.parse(event.target.result);
+            if (Array.isArray(imported) && imported.length > 0) {
+              AppState.characters = imported;
+              AppState.currentId = imported[0].id;
+              AppState.save();
+              renderSidebar();
+              renderArticle();
+              backupModal.classList.add('hidden');
+              showToast('캐릭터 데이터를 성공적으로 불러왔습니다!');
+            } else {
+              showToast('유효하지 않은 데이터 포맷입니다.', false);
+            }
+          } catch (err) {
+            showToast('JSON 파일 파싱에 실패했습니다.', false);
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      // Reset to Sample Data
+      document.getElementById('btnResetSampleData').addEventListener('click', () => {
+        AppState.characters = INITIAL_CHARACTERS;
+        AppState.save();
+        AppState.navigateToHome();
+        showToast('기본 샘플 캐릭터가 복원되었습니다.');
+      });
+
+      // Listen to Browser Back / Forward URL hash changes
+      window.addEventListener('hashchange', () => {
+        const hash = window.location.hash.replace('#', '').trim();
+        if (!hash || hash === 'home') {
+          AppState.currentView = 'home';
+          AppState.currentId = null;
+        } else if (AppState.getCharById(hash)) {
+          AppState.currentView = 'article';
+          AppState.currentId = hash;
+        }
+        renderView();
+      });
+
+      // Keyboard Shortcut (Ctrl + S to save in modal)
+      window.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+          if (!document.getElementById('editModal').classList.contains('hidden')) {
+            e.preventDefault();
+            saveEditModal();
+          }
+        }
+      });
+    }
+
+    // Initialize App
+    window.addEventListener('DOMContentLoaded', () => {
+      AppState.init();
+      setupEventListeners();
+      renderView();
+    });
+  </script>
+</body>
+</html>
